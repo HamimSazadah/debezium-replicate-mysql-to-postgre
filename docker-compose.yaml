@@ -1,0 +1,62 @@
+version: '2'
+services:
+  zookeeper:
+    image: quay.io/debezium/zookeeper:1.9
+    container_name: zookeeper
+    ports:
+     - 2181:2181
+     - 2888:2888
+     - 3888:3888
+  kafka:
+    image: quay.io/debezium/kafka:1.9
+    container_name: kafka
+    ports:
+     - 9092:9092
+    links:
+     - zookeeper
+    environment:
+     - ZOOKEEPER_CONNECT=zookeeper:2181
+  mysql:
+    image: quay.io/debezium/example-mysql:1.9
+    container_name: mysql
+    ports:
+     - 3306:3306
+    environment:
+     - MYSQL_ROOT_PASSWORD=debezium
+     - MYSQL_USER=mysqluser
+     - MYSQL_PASSWORD=mysqlpw
+  postgres:
+    image: postgres
+    container_name: postgres
+    ports:
+     - 5432:5432
+    environment:
+     - POSTGRES_PASSWORD=postgrespw
+     - POSTGRES_USER=postgresuser
+     - POSTGRES_DB=inventory
+  connect:
+    image: confluentinc/cp-kafka-connect
+    container_name: connect
+    volumes:
+      - ./debezium_connector:/usr/share/java/connector
+    depends_on:
+      - kafka
+    ports:
+     - 8083:8083
+    links:
+     - kafka
+     - mysql
+    environment:
+     - CONNECT_BOOTSTRAP_SERVERS=kafka:9092
+     - CONNECT_GROUP_ID=1
+     - CONNECT_CONFIG_STORAGE_TOPIC=my_connect_configs
+     - CONNECT_OFFSET_STORAGE_TOPIC=my_connect_offsets
+     - CONNECT_STATUS_STORAGE_TOPIC=my_connect_statuses
+     - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+     - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+     - CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+     - CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+     - CONNECT_REST_ADVERTISED_HOST_NAME=connect
+     - CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1
+     - CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1
+     - CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1
